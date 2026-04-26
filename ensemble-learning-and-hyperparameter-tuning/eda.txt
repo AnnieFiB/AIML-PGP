@@ -1,0 +1,73 @@
+**Leading Questions**
+
+What is the distribution of visa case statuses (certified vs. denied)?
+
+
+1. What is the distribution of visa case statuses (certified vs. denied)?
+2. How does the education level of employees impact visa approval rates?
+3. Is there a significant difference in visa approval rates between employees with and without prior job experience?
+4. How does the prevailing wage affect visa approval? Do higher wages lead to higher chances of approval?
+5. Do certain regions in the US have higher visa approval rates compared to others?
+6. How does the number of employees in a company influence visa approval? Do larger companies have a higher approval rate?
+7. Are visa approval rates different across various continents of employees? Which continent has the highest and lowest approval rates?
+
+
+
+
+
+ - if education has any impact on visa certification
+-  similarly check for the continents and find out how the visa status vary across different continents.
+- Let's see if having work experience has any influence over visa certification
+- Checking if the prevailing wage is similar across all the regions of the US
+-  analyze the data and see if the visa status changes with the prevailing wage
+- Observations on no_of_employees and case_status  and if it has any impact on visa applications getting certified.
+
+- Observations on yr_of_estab and case_status and if it has any impact on visa applications getting certified.
+- Observations on full_time_position and case_status and if it has any impact on visa applications getting certified.
+- any other suggestions
+
+
+
+
+
+___
+
+# <a name='link2'>**Exploratory Data Analysis (EDA)**</a>
+
+
+[(See Appendix A)](Automated_Data_Profiling_Report.html)
+
+### **Target Distribution (Univariate)**
+
+jupyter_contrib_nbextensions
+
+
+remove_input
+- 
+
+jupyter nbconvert Project_Full_Code_Notebook_EasyVisa.ipynb \
+    --to html \
+    --TagRemovePreprocessor.remove_input_tags='["remove_input"]' \
+    --TemplateExporter.exclude_input=True 
+
+
+jupyter nbconvert Project_Full_Code_Notebook_EasyVisa.ipynb \
+    --to html \
+    --TagRemovePreprocessor.remove_input_tags='["remove_input"]'
+
+
+
+
+D:\Portfolio\Bade-PGP-AIML\Project 3-AML-EasyVisa\Project_Full_Code_Notebook_EasyVisa.ipynb
+
+
+
+
+
+
+
+
+
+
+
+

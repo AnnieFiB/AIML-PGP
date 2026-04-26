@@ -1,0 +1,26 @@
+https://www.mygreatlearning.com/blog/cross-validation/
+
+https://www.geeksforgeeks.org/imbalanced-learn-module-in-python/
+
+https://machinelearningmastery.com/hyperparameter-optimization-with-random-search-and-grid-search/
+
+https://www.jeremyjordan.me/hyperparameter-tuning/
+
+https://www.tensorflow.org/
+
+https://medium.com/@subedibipin/boolean-algebra-and-logic-gates-58549f1a2578#:~:text=Logic%20gates%20are%20fundamental%20electronic,%2C%20%E2%80%9Con%20or%20off%E2%80%9D.
+
+https://ml-cheatsheet.readthedocs.io/en/latest/activation_functions.html
+
+https://mattmazur.com/2015/03/17/a-step-by-step-backpropagation-example/
+
+https://mattmazur.com/2015/03/17/a-step-by-step-backpropagation-example/
+
+pip install --upgrade pip setuptools wheel
+pip install numpy pandas matplotlib seaborn scikit-learn pillow
+pip install "tensorflow==2.15.0"
+pip install ydata_profiling sweetviz
+
+python -m ipykernel install --user --name=tfenv_new --display-name="Python 3.10 (tfenv_new)"
+
+

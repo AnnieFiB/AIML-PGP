@@ -1,0 +1,4 @@
+*.npy
+NLP-GenerativeAI/models/index.pkl
+NLP-GenerativeAI/models/index.pkl
+*.pkl

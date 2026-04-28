@@ -2,3 +2,4 @@
 NLP-GenerativeAI/models/index.pkl
 NLP-GenerativeAI/models/index.pkl
 *.pkl
+NLP-GenerativeAI/models/mistral-7b-instruct-v0.2.Q6_K.gguf

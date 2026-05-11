@@ -8,7 +8,6 @@ DIR_COUNT=0
 FILE_COUNT=0
 
 echo "[1/6] Cleaning cache and checkpoint directories..."
-# Find and remove cache-related directories, including subdirectories
 find . -type d \( \
     -name "__pycache__" \
     -o -name ".ipynb_checkpoints" \
@@ -19,27 +18,27 @@ find . -type d \( \
 \) -exec rm -rf {} + && echo "  ✔ Removed cache-related directories"
 
 echo "[2/6] Removing Python cache files (.pyc, .pyo, .pyd)..."
-# Find and remove all Python bytecode files, including in subdirectories
-PY_CACHE_COUNT=$(find . -type f \( -name "*.pyc" -o -name "*.pyo" -o -name "*.pyd" \) -exec rm -f {} + | wc -l)
+PY_CACHE_COUNT=$(find . -type f \( -name "*.pyc" -o -name "*.pyo" -o -name "*.pyd" \) | wc -l)
+find . -type f \( -name "*.pyc" -o -name "*.pyo" -o -name "*.pyd" \) -exec rm -f {} +
 echo "  ✔ Removed $PY_CACHE_COUNT Python bytecode files"
 
 echo "[3/6] Removing temporary and backup files (.tmp, *~, .bak)..."
-# Find and remove temporary and backup files in subdirectories
-TMP_COUNT=$(find . -type f \( -name "*.tmp" -o -name "*~" -o -name "*.bak" \) -exec rm -f {} + | wc -l)
+TMP_COUNT=$(find . -type f \( -name "*.tmp" -o -name "*~" -o -name "*.bak" \) | wc -l)
+find . -type f \( -name "*.tmp" -o -name "*~" -o -name "*.bak" \) -exec rm -f {} +
 echo "  ✔ Removed $TMP_COUNT temp/backup files"
 
-echo "[4/6] Removing data outputs and logs (.tsv, .log, .json, .xlsx)..."
-# Find and remove data output files and logs
-DATA_COUNT=$(find . -type f \( -name "*.tsv" -o -name "*.log" -o -name "*.xlsx" \) -exec rm -f {} + | wc -l)
-echo "  ✔ Removed $DATA_COUNT raw data and log files (excluding .csv)"
+echo "[4/6] Removing data outputs and logs (.tsv, .log, .xlsx)..."
+DATA_COUNT=$(find . -type f \( -name "*.tsv" -o -name "*.log" -o -name "*.xlsx" \) | wc -l)
+find . -type f \( -name "*.tsv" -o -name "*.log" -o -name "*.xlsx" \) -exec rm -f {} +
+echo "  ✔ Removed $DATA_COUNT raw data and log files (excluding .csv and .npy)"
 
-echo "[5/6] Removing ML model files (.pkl, .npy, .npz, .joblib, .h5)..."
-# Find and remove model and data artifacts in subdirectories
-MODEL_COUNT=$(find . -type f \( -name "*.pkl" -o -name "*.joblib" -o -name "*.npy" -o -name "*.npz" -o -name "*.h5" -o -name "*.ckpt" \) -exec rm -f {} + | wc -l)
-echo "  ✔ Removed $MODEL_COUNT model/data artifacts"
+echo "[5/6] Removing ML model files (.pkl, .npz, .joblib, .h5, .ckpt)..."
+# NOTE: .npy has been removed from this list to preserve your arrays
+MODEL_COUNT=$(find . -type f \( -name "*.pkl" -o -name "*.joblib" -o -name "*.npz" -o -name "*.h5" -o -name "*.ckpt" \) | wc -l)
+find . -type f \( -name "*.pkl" -o -name "*.joblib" -o -name "*.npz" -o -name "*.h5" -o -name "*.ckpt" \) -exec rm -f {} +
+echo "  ✔ Removed $MODEL_COUNT model/data artifacts (excluding .npy)"
 
 echo "[6/6] Clearing pip cache..."
-# Clear pip cache if pip is installed
 if command -v pip &> /dev/null; then
     pip cache purge
     echo "  ✔ Pip cache cleared"
@@ -48,4 +47,6 @@ else
 fi
 
 echo
-echo "✅ Cleanup complete! CSV files have been preserved."
+echo "✅ Cleanup complete! CSV and NPY files have been preserved."
+echo "📁 Directories removed: $DIR_COUNT"
+echo "📄 Files removed: $FILE_COUNT"

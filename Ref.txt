@@ -16,11 +16,26 @@ https://mattmazur.com/2015/03/17/a-step-by-step-backpropagation-example/
 
 https://mattmazur.com/2015/03/17/a-step-by-step-backpropagation-example/
 
-pip install --upgrade pip setuptools wheel
-pip install numpy pandas matplotlib seaborn scikit-learn pillow
-pip install "tensorflow==2.15.0"
-pip install ydata_profiling sweetviz
 
-python -m ipykernel install --user --name=tfenv_new --display-name="Python 3.10 (tfenv_new)"
+https://arxiv.org/pdf/1403.6382.pdf
+
+https://arxiv.org/pdf/1812.07997.pdf
+
+https://www.tensorflow.org/tutorials/images/classification
+
+https://www.tensorflow.org/tutorials/images/transfer_learning
+
+https://www.tensorflow.org/tutorials/images/data_augmentation
+
+https://leonardoaraujosantos.gitbook.io/artificial-inteligence/machine_learning/deep_learning
+
+
+https://github.com/PacktPublishing/Hands-On-Image-Processing-with-Python
+https://homepages.inf.ed.ac.uk/rbf/CVonline/LOCAL_COPIES/TUDELFT/FIP2_3.pdf
+
+
+
+
+
 
 

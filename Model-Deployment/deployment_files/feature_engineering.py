@@ -1,21 +1,12 @@
 
-from datetime import datetime
+import pandas as pd
 
-def create_features(X):
-    X = X.copy()
+def create_features(df):
+    df = df.copy()
 
-    current_year = datetime.now().year
+    if "Store_Establishment_Year" in df.columns:
+        current_year = pd.Timestamp.now().year
+        df["Store_Age"] = current_year - df["Store_Establishment_Year"]
+        df.drop(columns=["Store_Establishment_Year"], inplace=True)
 
-    X["Store_Age"] = current_year - X["Store_Establishment_Year"]
-    X["Product_Category_Code"] = X["Product_Id"].str[:2]
-
-    X = X.drop(
-        columns=[
-            "Product_Id",
-            "Store_Id",
-            "Store_Establishment_Year"
-        ],
-        errors="ignore"
-    )
-
-    return X
+    return df

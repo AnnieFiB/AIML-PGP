@@ -18,7 +18,7 @@ st.set_page_config(
 # -----------------------------
 BASE_DIR = Path(__file__).resolve().parent
 
-BACKEND_URL = "https://omotayof-superkart-backend.hf.space/predict"
+BACKEND_URL = "https://omotayof-superkart-api.hf.space/predict"
 
 AUTHOR_NAME = "Anthony Omotayo"
 GITHUB_URL = ""
@@ -126,9 +126,9 @@ with col1:
     )
 
 with col2:
-    st.title("SuperKart Sales Forecasting Workbench")
+    st.title("SuperKart Sales Prediction Workbench")
     st.caption(
-        "AI-powered retail revenue forecasting for product and store planning"
+        "AI-powered retail revenue prediction for product and store planning"
     )
 
 # -----------------------------
@@ -136,11 +136,11 @@ with col2:
 # -----------------------------
 st.divider()
 
-tab1, tab2 = st.tabs(["Forecast", "Model Information"])
+tab1, tab2 = st.tabs(["Predict", "Model Information"])
 
 with tab1:
 
-    st.markdown("### Forecast Setup")
+    st.markdown("### Prediction Setup")
 
     product_types = [
         "Frozen Foods",
@@ -168,38 +168,13 @@ with tab1:
         "Food Mart"
     ]
 
-    with st.form("forecast_form"):
+    with st.form("predict_form"):
 
         with st.expander("Product Details", expanded=True):
 
             col1, col2 = st.columns(2)
 
             with col1:
-                Product_Id = st.text_input("Product ID", value="FD123")
-
-                Product_Weight = st.number_input(
-                    "Product Weight",
-                    min_value=0.0,
-                    value=12.66
-                )
-
-                Product_Sugar_Content = st.selectbox(
-                    "Sugar Content",
-                    ["Low Sugar", "Regular", "No Sugar"]
-                )
-
-            with col2:
-                Product_Allocated_Area = st.number_input(
-                    "Allocated Display Area",
-                    min_value=0.0,
-                    max_value=1.0,
-                    value=0.027
-                )
-
-                Product_Type = st.selectbox(
-                    "Product Type",
-                    product_types
-                )
 
                 Product_MRP = st.number_input(
                     "Product MRP",
@@ -207,12 +182,29 @@ with tab1:
                     value=117.08
                 )
 
+                Product_Weight = st.number_input(
+                    "Product Weight",
+                    min_value=0.0,
+                    value=12.66
+                )
+
+            with col2:
+
+                Product_Sugar_Content = st.selectbox(
+                    "Sugar Content",
+                    ["Low Sugar", "Regular", "No Sugar"]
+                )
+
+                Product_Type = st.selectbox(
+                    "Product Type",
+                    product_types
+                )
+
         with st.expander("Store Details", expanded=True):
 
             col3, col4 = st.columns(2)
 
             with col3:
-                Store_Id = st.text_input("Store ID", value="ST001")
 
                 Store_Establishment_Year = st.number_input(
                     "Store Establishment Year",
@@ -221,11 +213,12 @@ with tab1:
                     value=2009
                 )
 
-            with col4:
                 Store_Size = st.selectbox(
                     "Store Size",
                     ["Small", "Medium", "High"]
                 )
+
+            with col4:
 
                 Store_Location_City_Type = st.selectbox(
                     "City Tier",
@@ -238,37 +231,35 @@ with tab1:
                 )
 
         submitted = st.form_submit_button(
-            "Generate Forecast",
+            "Predict Sale",
             use_container_width=True
         )
 
     if submitted:
 
         payload = {
-            "Product_Id": Product_Id,
-            "Product_Weight": Product_Weight,
-            "Product_Sugar_Content": Product_Sugar_Content,
-            "Product_Allocated_Area": Product_Allocated_Area,
-            "Product_Type": Product_Type,
             "Product_MRP": Product_MRP,
-            "Store_Id": Store_Id,
+            "Product_Weight": Product_Weight,
             "Store_Establishment_Year": Store_Establishment_Year,
+            "Product_Type": Product_Type,
+            "Product_Sugar_Content": Product_Sugar_Content,
+            "Store_Type": Store_Type,
             "Store_Size": Store_Size,
-            "Store_Location_City_Type": Store_Location_City_Type,
-            "Store_Type": Store_Type
+            "Store_Location_City_Type": Store_Location_City_Type
         }
 
         try:
-            with st.spinner("Generating forecast..."):
+            with st.spinner("Predicting sales..."):
                 response = requests.post(
                     BACKEND_URL,
                     json=payload,
-                    timeout=30
+                    timeout=60
                 )
 
-            if response.status_code == 200:
+            if response.ok:
 
-                prediction = response.json()["predicted_sales"]
+                result = response.json()
+                prediction = result["predicted_sales"]
 
                 lower_bound = max(0, prediction - TEST_RMSE)
                 upper_bound = prediction + TEST_RMSE
@@ -316,11 +307,18 @@ with tab1:
                 st.info(recommendation)
 
             else:
-                st.error("Forecast request failed.")
-                st.json(response.json())
+                st.error(f"Forecast request failed. Status code: {response.status_code}")
+
+                try:
+                    st.json(response.json())
+                except Exception:
+                    st.code(response.text[:1000])
+
+        except requests.exceptions.RequestException as e:
+            st.error(f"Backend connection error: {e}")
 
         except Exception as e:
-            st.error(f"API connection error: {e}")
+            st.error(f"Unexpected error: {e}")
 
 with tab2:
 
@@ -329,7 +327,7 @@ with tab2:
     cards = [
         ("Model", MODEL_NAME.replace("Tuned ", "")),
         ("RMSE", f"{TEST_RMSE:,.0f}"),
-        ("R²", f"{TEST_R2*100:.1f}%"),
+        ("R²", f"{TEST_R2 * 100:.1f}%"),
         ("Version", MODEL_VERSION)
     ]
 
@@ -354,9 +352,8 @@ with tab2:
     c1, c2, c3 = st.columns(3)
 
     c1.metric("MAE", f"{TEST_MAE:,.1f}")
-    c2.metric("Adjusted R²", f"{TEST_ADJ_R2* 100:.1f}%")
+    c2.metric("Adjusted R²", f"{TEST_ADJ_R2 * 100:.1f}%")
     c3.metric("MAPE", f"{TEST_MAPE * 100:.1f}%")
-
 
     st.divider()
 
@@ -365,11 +362,12 @@ with tab2:
     st.markdown(
         """
         - Product MRP
-        - Product Category
+        - Product Weight
+        - Product Type
+        - Product Sugar Content
         - Store Type
         - Store Size
         - Store Age
-        - Allocated Shelf Area
         - City Tier
         """
     )

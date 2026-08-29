@@ -1,0 +1,4 @@
+- name: Run data preparation
+  env:
+    HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  run: python src/data_prep.py

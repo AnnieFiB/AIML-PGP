@@ -87,14 +87,17 @@ def main(repo_id=None,model_id=None):
     print("\n Uploading best model to Hugging Face Model Hub...")
 
     local_model_path = f"models/{best_name}.joblib"
+
     register_model_hf(
         model=best_model,
         model_name=best_name,
         model_repo=model_id
     )
 
-
     print("\n=== STEP 6 COMPLETED SUCCESSFULLY ===")
+
+    return best_model, local_model_path, best_name, model_id
+
 
 
 if __name__ == "__main__":

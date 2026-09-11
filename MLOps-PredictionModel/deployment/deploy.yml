@@ -1,0 +1,64 @@
+name: CI-CD Wellness Tourism Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-train-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # ---------------------------------------------------------
+    # 1. Checkout repository
+    # ---------------------------------------------------------
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    # ---------------------------------------------------------
+    # 2. Set up Python
+    # ---------------------------------------------------------
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+    # ---------------------------------------------------------
+    # 3. Install dependencies
+    # ---------------------------------------------------------
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+
+    # ---------------------------------------------------------
+    # 4. Run data preprocessing
+    # ---------------------------------------------------------
+    - name: Run data prep
+      run: python src/data_prep.py
+
+    # ---------------------------------------------------------
+    # 5. Train model and upload to Hugging Face
+    # ---------------------------------------------------------
+    - name: Train model
+      run: python src/train_model.py
+
+    # ---------------------------------------------------------
+    # 6. Capture dynamic model filename from training output
+    # ---------------------------------------------------------
+    - name: Read model filename
+      id: modelinfo
+      run: |
+        echo "MODEL_FILENAME=$(cat model_output.txt)" >> $GITHUB_ENV
+        echo "MODEL_REPO=$(cat model_repo.txt)" >> $GITHUB_ENV
+
+    # ---------------------------------------------------------
+    # 7. Deploy FastAPI app to Hugging Face Space
+    # ---------------------------------------------------------
+    - name: Deploy FastAPI Space
+      uses: huggingface/space-deploy-action@v1
+      with:
+        repo-id: Omotayof/wellness-tourism-api
+        token: ${{ secrets.HF_TOKEN_ML }}
+        space-variables: |
+          MODEL_REPO=${{ env.MODEL_REPO }}
+          MODEL_FILENAME=${{ env.MODEL_FILENAME }}

@@ -96,6 +96,13 @@ def main(repo_id=None,model_id=None):
 
     print("\n=== STEP 6 COMPLETED SUCCESSFULLY ===")
 
+    with open("model_output.txt", "w") as f:
+     f.write(best_name + ".joblib")
+
+    with open("model_repo.txt", "w") as f:
+        f.write(model_id)
+
+
     return best_model, local_model_path, best_name, model_id
 
 

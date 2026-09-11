@@ -1,57 +1,91 @@
-import mlflow
-import mlflow.sklearn
-import pandas as pd
+
+import os
 import warnings
+from dotenv import load_dotenv
+
+from src.data_prep import main as prepare_data
+from src.train_utils import (
+    split_data,
+    build_preprocessor,
+    get_models_and_params,
+    train_and_tune,
+    summarize_models,
+    select_best_model,
+    register_model_hf
+)
+from src.hf_utils import (load_from_hf, upload_to_hf)
+
+
 warnings.filterwarnings("ignore", category=UserWarning)
 
+load_dotenv()
 
-from src.train_utils import *
+DATASET_REPO = os.getenv("HF_DATASET_REPO")
+MODEL_REPO = os.getenv("HF_MODEL_REPO")
+
+TARGET_COL = "ProdTaken"
+FILENAME = "tourism.csv"
 
 
+def main(repo_id=None, model_id=None):
+    """
+    Run the complete model-building workflow:
+    load and clean data, split, preprocess, train,
+    evaluate, select and register the best model.
+    """
 
-def main(repo_id=None,model_id=None):
-    print("\n=== STEP 6: MODEL TRAINING STARTED ===\n")
+    repo_id = repo_id or DATASET_REPO
+    model_id = model_id or MODEL_REPO
 
-    # ---------------------------------------------------------
-    # 1. Load train/test splits from Hugging Face (Step 4 output)
-    # ---------------------------------------------------------
-    print("Loading train/test splits from Hugging Face...")
+    # 1. Load and clean data
+    print("\n========== 1. DATA PREPARATION ==========")
 
-    dfs = load_from_hf(["train.csv", "test.csv"], repo_id=repo_id)
+    df = prepare_data(
+        FILENAME,
+        repo_id=repo_id
+    )
+
+    # 2. Split data
+    print("\n========== 2. TRAIN-TEST SPLIT ==========")
+
+    X_train, X_test, y_train, y_test = split_data(
+    df,
+    target_col=TARGET_COL,
+    repo_id=repo_id
+)
+
+    # Load split datasets from Hugging Face
+    dfs = load_from_hf(
+        ["train.csv", "test.csv"],
+        repo_id=DATASET_REPO
+    )
 
     train_df = dfs["train.csv"]
     test_df = dfs["test.csv"]
 
-    print(f"  Train shape: {train_df.shape}")
-    print(f"  Test shape: {test_df.shape}")
-
-    # ---------------------------------------------------------
-    # 2. Build preprocessing pipeline (OneHotEncoder + StandardScaler)
-    # ---------------------------------------------------------
-    print("\n Building preprocessing pipeline...")
-    preprocessor = build_preprocessor(train_df)
-
+    # Separate X and y
     X_train = train_df.drop(columns=["ProdTaken"])
     y_train = train_df["ProdTaken"]
 
     X_test = test_df.drop(columns=["ProdTaken"])
     y_test = test_df["ProdTaken"]
 
-    # ---------------------------------------------------------
-    # 3. Load models + parameter grids
-    # ---------------------------------------------------------
-    print("\n Loading models and parameter grids...")
+
+    # 3. Build preprocessing pipeline
+    print("\n========== 3. PREPROCESSING ==========")
+
+    preprocessor = build_preprocessor(X_train)
+
+    # 4. Load models and parameter grids
+    print("\n========== 4. MODEL TRAINING ==========")
 
     models, param_grids = get_models_and_params()
-
-    # ---------------------------------------------------------
-    # 4. Train + tune + log each model
-    # ---------------------------------------------------------
     results = {}
 
+    # 5. Train and tune all models
     for name, model in models.items():
-        print(f"\n  =========== Model: {name} ===========")
-        best_model, f1 ,acc = train_and_tune(
+
+        best_model, f1, accuracy = train_and_tune(
             model_name=name,
             model=model,
             params=param_grids[name],
@@ -65,28 +99,21 @@ def main(repo_id=None,model_id=None):
         results[name] = {
             "model": best_model,
             "f1": f1,
-            "accuracy": acc
+            "accuracy": accuracy
         }
 
+    # 6. Compare models
+    print("\n========== 5. MODEL COMPARISON ==========")
 
-    # ---------------------------------------------------------
-    # 5. Display summary table of all models
-    # ---------------------------------------------------------
     summarize_models(results)
 
-    # ---------------------------------------------------------
-    # 6. Select best model
-    # ---------------------------------------------------------
-    print("\n Selecting best model based on F1 score...")
+    # 7. Select best model
+    print("\n========== 6. BEST MODEL ==========")
 
     best_name, best_model = select_best_model(results)
 
-    # ---------------------------------------------------------
-    # 7. Save + upload best model to Hugging Face Model Hub
-    # ---------------------------------------------------------
-    print("\n Uploading best model to Hugging Face Model Hub...")
-
-    local_model_path = f"models/{best_name}.joblib"
+    # 8. Save and upload best model
+    print("\n========== 7. MODEL REGISTRATION ==========")
 
     register_model_hf(
         model=best_model,
@@ -94,17 +121,23 @@ def main(repo_id=None,model_id=None):
         model_repo=model_id
     )
 
-    print("\n=== STEP 6 COMPLETED SUCCESSFULLY ===")
+    # Save outputs for GitHub Actions
 
-    with open("model_output.txt", "w") as f:
-     f.write(best_name + ".joblib")
+    print("\n Saving model details for GitHub Actions...")
 
-    with open("model_repo.txt", "w") as f:
+    local_model_path = f"models/{best_name}.joblib"
+
+    with open("models/model_output.txt", "w") as f:
+        f.write(best_name + ".joblib")
+    print(f"Saved model name: {best_name + ".joblib"} → models/model_output.txt")
+
+    with open("models/model_repo.txt", "w") as f:
         f.write(model_id)
+    print(f"Saved model id: {model_id} → models/model_repo.txt")
 
+    print("\n========== PIPELINE COMPLETED ==========")
 
     return best_model, local_model_path, best_name, model_id
-
 
 
 if __name__ == "__main__":

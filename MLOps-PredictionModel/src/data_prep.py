@@ -1,178 +1,186 @@
+
 import os
+import sys
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from dotenv import load_dotenv
+from IPython.display import display
 
 import src.hf_utils as hf_utils
 
-load_dotenv()
 
-# Default dataset repo from .env
+load_dotenv()
 DATASET_REPO = os.getenv("HF_DATASET_REPO")
 
 
-# ---------------------------------------------------------
-# CLEANING FUNCTION
-# ---------------------------------------------------------
+def inspect_data(df):
+    """
+    Inspect and print the structure and quality of the raw dataset.
+    """
+    print("\n========== RAW DATA INSPECTION ==========")
+
+    print(f"\nDataset shape: {df.shape}")
+
+    print("\nFirst 5 rows:")
+    display(df.head())
+
+    print("\nData types and non-null values:")
+    df.info()
+
+    print("\nMissing values:")
+    display(df.isna().sum())
+
+    print(f"\nDuplicate rows: {df.duplicated().sum()}")
+
+
+def target_distribution(df, target="ProdTaken"):
+    """
+    Print the count and percentage distribution of the target variable.
+    """
+    distribution = pd.DataFrame({
+        "Count": df[target].value_counts(),
+        "Percentage (%)": (
+            df[target]
+            .value_counts(normalize=True)
+            .mul(100)
+            .round(2)
+        )
+    })
+
+    print("\n========== TARGET DISTRIBUTION ==========")
+    display(distribution)
+
+
 def clean_data(df):
-    print("Cleaning data...")
+    """
+    Clean the dataset by removing unnecessary columns and
+    standardising categorical values before model building.
+    """
+    df = df.copy()
 
-    index_like_cols = [col for col in df.columns if col.lower().startswith("unnamed")]
-    id_like_cols = [col for col in df.columns if "id" in col.lower()]
-    drop_cols = index_like_cols + id_like_cols
+    print("\n========== DATA CLEANING ==========")
 
-    print(f"1. Dropping unnecessary columns: {drop_cols if drop_cols else 'None'}")
+    # Step 1: Check and remove true duplicates
+    duplicates = df.duplicated().sum()
+
+    print(f"\nStep 1 - Duplicate rows found: {duplicates}")
+
+    if duplicates > 0:
+        df = df.drop_duplicates().reset_index(drop=True)
+        print(f"Removed {duplicates} duplicate rows.")
+    else:
+        print("No duplicate rows removed.")
+
+    print(f"Dataset shape: {df.shape}")
+
+    # Step 2: Remove non-predictive columns
+    drop_cols = [
+        col for col in df.columns
+        if col.lower().startswith("unnamed") or col == "CustomerID"
+    ]
+
+    print(f"\nStep 2 - Columns removed: {drop_cols}")
+
     df = df.drop(columns=drop_cols, errors="ignore")
 
-    print("2. Filling missing numerical values (if any)...")
-    num_cols = df.select_dtypes(include=["int64", "float64"]).columns
-    df[num_cols] = df[num_cols].fillna(df[num_cols].median())
+    print(f"Remaining columns ({len(df.columns)}):")
+    print(df.columns.tolist())
+    print(f"Dataset shape: {df.shape}")
 
-    print("3. Data cleaning completed.\n")
+    # Step 3: Standardise categorical values
+    cat_cols = df.select_dtypes(
+        include=["object", "string"]
+    ).columns
+
+    print("\nStep 3 - Categorical columns:")
+    print(cat_cols.tolist())
+
+    df[cat_cols] = df[cat_cols].apply(
+        lambda col: col.astype("string").str.strip()
+    )
+
+    print("Leading/trailing spaces removed.")
+
+    # Step 4: Correct known inconsistent Gender label
+    if "Gender" in df.columns:
+        print("\nStep 4 - Gender values before correction:")
+        print(df["Gender"].value_counts())
+
+        df["Gender"] = df["Gender"].replace(
+            "Fe Male", "Female"
+        )
+
+        print("\nGender values after correction:")
+        print(df["Gender"].value_counts())
+
+    # Step 5: Final missing-value check
+    print("\nStep 5 - Missing values after cleaning:")
+    display(df.isna().sum())
+
+    print("\n========== CLEANING COMPLETE ==========")
+    print(f"Final dataset shape: {df.shape}")
+    print(f"Total missing values: {df.isna().sum().sum()}")
+
     return df
 
 
-# ---------------------------------------------------------
-# SPLITTING FUNCTION
-# ---------------------------------------------------------
-def split_data(df, target_col="ProdTaken", test_size=0.2, random_state=42):
-    print("Splitting data into train/test sets...")
+def main(filename, repo_id=None):
+    """
+    Load raw data from Hugging Face, inspect and clean it,
+    then return the cleaned dataframe for model building.
+    """
+    repo_id = repo_id or DATASET_REPO
 
-    if target_col not in df.columns:
-        raise ValueError(f"Target column '{target_col}' not found in dataframe.")
+    if not repo_id:
+        raise ValueError(
+            "Set HF_DATASET_REPO in .env or provide repo_id."
+        )
 
-    X = df.drop(columns=[target_col])
-    y = df[target_col]
+   # ========== STEP 1: LOAD DATA ==========
 
-    print(f"  Total samples: {len(df)}")
-    print(f"  Features shape: {X.shape}")
+    print(f"Repository: {repo_id}")
+    print(f"Filename: {filename}")
 
-    print("\n  Target distribution BEFORE split:")
-    print(y.value_counts(normalize=True).rename("proportion"))
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y,
-        test_size=test_size,
-        stratify=y,
-        random_state=random_state
+    dfs = hf_utils.load_from_hf(
+        filenames=filename,
+        repo_id=repo_id
     )
 
-    train_df = pd.concat([X_train, y_train], axis=1)
-    test_df = pd.concat([X_test, y_test], axis=1)
+    df = dfs[filename]
 
-    print("\n  Target distribution AFTER split:")
-    print("  Train:")
-    print(y_train.value_counts(normalize=True).rename("proportion"))
-    print("\n  Test:")
-    print(y_test.value_counts(normalize=True).rename("proportion"))
+    print("\nData loaded successfully.")
+    print(f"Loaded shape: {df.shape}")
 
-    os.makedirs("data", exist_ok=True)
-    train_path = "data/train.csv"
-    test_path = "data/test.csv"
+    # ========== STEP 2: INSPECT DATA ==========
+    inspect_data(df)
 
-    train_df.to_csv(train_path, index=False)
-    test_df.to_csv(test_path, index=False)
+    # ========== STEP 3: CHECK TARGET ==========
+    target_distribution(df)
 
-    print(f"\nTrain saved: {train_path} ({train_df.shape})")
-    print(f"Test saved: {test_path} ({test_df.shape})\n")
+    # ========== STEP 4: CLEAN DATA ==========
+    cleaned_df = clean_data(df)
 
-    return train_path, test_path
+    # ========== FINAL CLEANED DATA ==========
 
+    display("\nFirst 5 rows:")
+    display(cleaned_df.head())
 
-# ---------------------------------------------------------
-# UPLOAD FUNCTION
-# ---------------------------------------------------------
-def upload_splits(filenames, repo_id=None):
-    """
-    Upload train/test splits to Hugging Face dataset repo.
-    If repo_id is not provided, fall back to .env HF_DATASET_REPO.
-    """
+    print("\nFinal data types:")
+    cleaned_df.info()
 
-    # Fallback to .env repo
-    if repo_id is None:
-        repo_id = DATASET_REPO
+    print("\nFinal target distribution:")
+    target_distribution(cleaned_df)
+
+    return cleaned_df
 
 
-    hf_utils.upload_to_hf(filenames, repo_type="dataset", repo_id=repo_id)
-    # hf_utils.upload_to_hf(test_path, repo_type="dataset", repo_id=repo_id)
-
-
-# ---------------------------------------------------------
-# MAIN FUNCTION (USER INPUT + OPTIONAL REPO OVERRIDE)
-# ---------------------------------------------------------
-def main(filenames, repo_id=None):
-    """
-    Step 1-5: Load raw data, clean, split, upload.
-
-    Parameters
-    ----------
-    filenames : str or list
-        Raw CSV filename(s) inside the HF dataset repo.
-
-    repo_id : str, optional
-        Override HF dataset repo. If None, uses HF_DATASET_REPO from .env.
-    """
-
-    print("=== STEP 1-5: DATA PREPARATION STARTED ===\n")
-
-    # Normalize filenames to list
-    if isinstance(filenames, str):
-        filenames = [filenames]
-
-    # Use .env repo if none provided
-    if repo_id is None:
-        repo_id = DATASET_REPO
-
-    print(f"Using dataset repo: {repo_id}")
-    print(f"Loading raw file(s): {filenames}\n")
-
-    # Load raw files from HF
-    dfs = hf_utils.load_from_hf(filenames)
-    df = dfs[filenames[0]]
-
-    print(f"Raw data loaded. Shape: {df.shape}\n")
-    display(df.head()) # inspect first few rows
-    display(df.info()) # inspect data types and non-null counts
-    display(df.describe()) # inspect summary statistics
-    display(df.isna().sum()) # inspect missing values
-
-
-    # Clean
-    df = clean_data(df)
-
-    # Split
-    train_path, test_path = split_data(df)
-    filenames = [train_path, test_path]
-
-    # Upload
-    print("Uploading train/test splits to Hugging Face...")
-    upload_splits(filenames, repo_id=repo_id)
-
-
-    print("\n=== STEP 5 COMPLETED SUCCESSFULLY ===")
-
-
-# ---------------------------------------------------------
-# CLI ENTRY POINT
-# ---------------------------------------------------------
 if __name__ == "__main__":
-    import sys
 
-    # Example usage:
-    # python src/data_prep.py tourism.csv
-    # python src/data_prep.py tourism.csv metadata.csv Omotayof/new-repo
+    if len(sys.argv) < 2:
+        raise ValueError(
+            "Usage: python -m src.data_prep tourism.csv"
+        )
 
-    args = sys.argv[1:]
+    filename = sys.argv[1]
+    repo_id = sys.argv[2] if len(sys.argv) > 2 else None
 
-    if len(args) == 0:
-        raise ValueError("Please provide at least one raw filename.")
-
-    # If last argument looks like a repo (contains '/'), treat it as repo override
-    if "/" in args[-1]:
-        repo = args[-1]
-        filenames = args[:-1]
-    else:
-        repo = None
-        filenames = args
-
-    main(filenames, repo_id=repo)
+    main(filename, repo_id)

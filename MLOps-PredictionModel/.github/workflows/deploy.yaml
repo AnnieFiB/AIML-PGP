@@ -39,5 +39,5 @@ jobs:
         repo-id: Omotayof/wellness-tourism-api
         token: ${{ secrets.HF_TOKEN_ML }}
         space-variables: |
-          MODEL_REPO=${{ env.MODEL_REPO }}
+          MODEL_REPO=${{ env.HF_MODEL_REPO }}
           MODEL_FILENAME=${{ env.MODEL_FILENAME }}

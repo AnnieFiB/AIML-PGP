@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from pydantic import BaseModel
 import pandas as pd
@@ -10,9 +11,8 @@ class Customer(BaseModel):
     Duration: int
     MonthlyIncome: float
 
-# These will be set from environment/config in deployment, not hardcoded in code
-MODEL_REPO = "Omotayof/wellness-tourism-model"
-MODEL_FILENAME = "xgboost.joblib"  # set via CI/CD based on training output
+MODEL_REPO = os.getenv("MODEL_REPO")
+MODEL_FILENAME = os.getenv("MODEL_FILENAME")
 
 model = load_model(MODEL_REPO, MODEL_FILENAME)
 

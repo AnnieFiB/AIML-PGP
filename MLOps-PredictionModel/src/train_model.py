@@ -123,17 +123,27 @@ def main(repo_id=None, model_id=None):
 
     # Save outputs for GitHub Actions
 
-    print("\n Saving model details for GitHub Actions...")
+    print("\nSaving model details for GitHub Actions...")
 
     local_model_path = f"models/{best_name}.joblib"
 
+    model_filename = best_name + ".joblib"
+
     with open("deployment/model_output.txt", "w") as f:
-        f.write(best_name + ".joblib")
-    print(f"Saved model name: {best_name + ".joblib"} → deployment/model_output.txt")
+        f.write(model_filename)
 
     with open("deployment/model_repo.txt", "w") as f:
         f.write(model_id)
-    print(f"Saved model id: {model_id} → deployment/model_repo.txt")
+
+    print(
+        f"Saved model name: {model_filename} "
+        "→ deployment/model_output.txt"
+    )
+
+    print(
+        f"Saved model repo: {model_id} "
+        "→ deployment/model_repo.txt"
+    )
 
     print("\n========== PIPELINE COMPLETED ==========")
 

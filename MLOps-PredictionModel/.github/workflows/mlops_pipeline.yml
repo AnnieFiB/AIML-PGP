@@ -22,11 +22,11 @@ jobs:
     steps:
 
       - name: Checkout Repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
 
 
       - name: Set Up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: "pip"
@@ -40,6 +40,7 @@ jobs:
 
       - name: Upload Dataset to Hugging Face
         env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN_ML }}
           HF_TOKEN_ML: ${{ secrets.HF_TOKEN_ML }}
           HF_DATASET_REPO: ${{ secrets.HF_DATASET_REPO }}
 
@@ -69,11 +70,11 @@ jobs:
     steps:
 
       - name: Checkout Repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
 
 
       - name: Set Up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: "pip"
@@ -97,6 +98,7 @@ jobs:
 
       - name: Run Model Training Pipeline
         env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN_ML }}
           HF_TOKEN_ML: ${{ secrets.HF_TOKEN_ML }}
           HF_DATASET_REPO: ${{ secrets.HF_DATASET_REPO }}
           HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}
@@ -117,32 +119,34 @@ jobs:
 
 
       - name: Upload Deployment Metadata
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: deployment-metadata
+
           path: |
             deployment/model_output.txt
             deployment/model_repo.txt
+
           retention-days: 1
 
 
   # =======================================================
-  # STAGE 3: DEPLOY / HOST
+  # STAGE 3: DEPLOY TO GRADIO SPACE
   # =======================================================
 
   deploy-hosting:
-    name: Deploy to Hugging Face Space
+    name: Deploy to Hugging Face Gradio Space
     needs: model-training
     runs-on: ubuntu-latest
 
     steps:
 
       - name: Checkout Repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
 
 
       - name: Set Up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: "pip"
@@ -154,8 +158,10 @@ jobs:
           pip install -r requirements.txt
 
 
+      # Retrieve the latest model metadata generated
+      # during the model-training job.
       - name: Download Deployment Metadata
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           name: deployment-metadata
           path: deployment
@@ -175,8 +181,9 @@ jobs:
           cat deployment/model_repo.txt
 
 
-      - name: Deploy to Hugging Face Space
+      - name: Deploy to Hugging Face Gradio Space
         env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN_ML }}
           HF_TOKEN_ML: ${{ secrets.HF_TOKEN_ML }}
           HF_SPACE_REPO: ${{ secrets.HF_SPACE_REPO }}
 

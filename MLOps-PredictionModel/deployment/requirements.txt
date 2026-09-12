@@ -1,4 +1,5 @@
-huggingface_hub==1.12.0
+gradio==6.27.0
+huggingface_hub==1.31.0
 joblib==1.5.3
 numpy==2.4.4
 pandas==2.3.3

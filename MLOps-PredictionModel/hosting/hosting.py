@@ -1,7 +1,6 @@
-
 import os
 
-from huggingface_hub import HfApi, create_repo
+from huggingface_hub import HfApi
 
 
 # ---------------------------------------------------------
@@ -24,25 +23,7 @@ if not HF_SPACE_REPO:
 
 
 # ---------------------------------------------------------
-# CREATE / CONNECT TO SPACE
-# ---------------------------------------------------------
-
-print(
-    f"Preparing Hugging Face Space: "
-    f"{HF_SPACE_REPO}"
-)
-
-create_repo(
-    repo_id=HF_SPACE_REPO,
-    repo_type="space",
-    space_sdk="docker",
-    token=HF_TOKEN,
-    exist_ok=True
-)
-
-
-# ---------------------------------------------------------
-# HUGGING FACE API
+# CONNECT TO HUGGING FACE
 # ---------------------------------------------------------
 
 api = HfApi(
@@ -51,11 +32,10 @@ api = HfApi(
 
 
 # ---------------------------------------------------------
-# ADD MODEL HUB TOKEN TO SPACE
+# ADD TOKEN TO SPACE SECRETS
 # ---------------------------------------------------------
 
-# Allows the deployed Streamlit application to download
-# a private model from Hugging Face Model Hub.
+# Required if the model repository is private.
 api.add_space_secret(
     repo_id=HF_SPACE_REPO,
     key="HF_TOKEN_ML",
@@ -68,8 +48,10 @@ api.add_space_secret(
 # ---------------------------------------------------------
 
 print(
-    "\nUploading deployment files..."
+    f"Uploading deployment files to "
+    f"Hugging Face Space: {HF_SPACE_REPO}"
 )
+
 
 api.upload_folder(
     folder_path="deployment",
@@ -80,6 +62,6 @@ api.upload_folder(
 
 
 print(
-    f"\nDeployment successful: "
+    f"Deployment completed successfully: "
     f"{HF_SPACE_REPO}"
 )

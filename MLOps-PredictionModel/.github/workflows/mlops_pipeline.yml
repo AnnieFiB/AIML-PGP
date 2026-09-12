@@ -1,13 +1,6 @@
 
 name: Tourism Project MLOps Pipeline
 
-# =========================================================
-# TRIGGER
-# =========================================================
-# Run automatically whenever code is pushed to main.
-# workflow_dispatch also allows the pipeline to be run
-# manually from GitHub Actions.
-
 on:
   push:
     branches:
@@ -28,26 +21,23 @@ jobs:
 
     steps:
 
-      # Download repository code
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
 
-      # Configure Python
       - name: Set Up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
+          cache: "pip"
 
 
-      # Install packages required for dataset registration
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas huggingface-hub
+          pip install -r requirements.txt
 
 
-      # Upload original tourism.csv to HF Dataset Hub
       - name: Upload Dataset to Hugging Face
         env:
           HF_TOKEN_ML: ${{ secrets.HF_TOKEN_ML }}
@@ -78,34 +68,23 @@ jobs:
 
     steps:
 
-      # Download repository code
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
 
-      # Configure Python
       - name: Set Up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
+          cache: "pip"
 
 
-      # Install training dependencies
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-
-          pip install \
-            pandas \
-            numpy \
-            scikit-learn \
-            xgboost \
-            joblib \
-            huggingface-hub \
-            mlflow
+          pip install -r requirements.txt
 
 
-      # Start local MLflow tracking server
       - name: Start MLflow Server
         run: |
           nohup mlflow server \
@@ -115,23 +94,6 @@ jobs:
 
           sleep 5
 
-
-      # ---------------------------------------------------
-      # train_model.py performs:
-      #
-      # 1. Load raw dataset from Hugging Face
-      # 2. Clean and prepare data
-      # 3. Stratified train/test split
-      # 4. Upload train/test data to HF Dataset Hub
-      # 5. Reload train/test data
-      # 6. Build preprocessing pipeline
-      # 7. Train and tune models
-      # 8. Track experiments using MLflow
-      # 9. Evaluate models
-      # 10. Select best model
-      # 11. Save and upload best model to HF Model Hub
-      # 12. Generate deployment metadata
-      # ---------------------------------------------------
 
       - name: Run Model Training Pipeline
         env:
@@ -144,7 +106,6 @@ jobs:
           python -m src.train_model
 
 
-      # Check that deployment metadata was created
       - name: Verify Model Metadata
         run: |
           echo "Selected model:"
@@ -155,11 +116,8 @@ jobs:
           cat deployment/model_repo.txt
 
 
-      # Each GitHub job uses a fresh machine.
-      # Store the generated metadata so the deployment
-      # stage can retrieve it.
       - name: Upload Deployment Metadata
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deployment-metadata
           path: |
@@ -169,7 +127,7 @@ jobs:
 
 
   # =======================================================
-  # STAGE 3: DEPLOY AND HOST
+  # STAGE 3: DEPLOY / HOST
   # =======================================================
 
   deploy-hosting:
@@ -179,35 +137,30 @@ jobs:
 
     steps:
 
-      # Download repository code
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
 
-      # Configure Python
       - name: Set Up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
+          cache: "pip"
 
 
-      # hosting.py only requires huggingface-hub
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install huggingface-hub
+          pip install -r requirements.txt
 
 
-      # Retrieve model_output.txt and model_repo.txt
-      # generated during model training
       - name: Download Deployment Metadata
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: deployment-metadata
           path: deployment
 
 
-      # Confirm all files required by the Space are present
       - name: Verify Deployment Package
         run: |
           echo "Deployment files:"
@@ -222,15 +175,6 @@ jobs:
           cat deployment/model_repo.txt
 
 
-      # hosting.py uploads the deployment directory:
-      #
-      # Dockerfile
-      # requirements.txt
-      # streamlit_app.py
-      # model_output.txt
-      # model_repo.txt
-      #
-      # to the Hugging Face Space.
       - name: Deploy to Hugging Face Space
         env:
           HF_TOKEN_ML: ${{ secrets.HF_TOKEN_ML }}

@@ -127,13 +127,13 @@ def main(repo_id=None, model_id=None):
 
     local_model_path = f"models/{best_name}.joblib"
 
-    with open("models/model_output.txt", "w") as f:
+    with open("deployment/model_output.txt", "w") as f:
         f.write(best_name + ".joblib")
-    print(f"Saved model name: {best_name + ".joblib"} → models/model_output.txt")
+    print(f"Saved model name: {best_name + ".joblib"} → deployment/model_output.txt")
 
-    with open("models/model_repo.txt", "w") as f:
+    with open("deployment/model_repo.txt", "w") as f:
         f.write(model_id)
-    print(f"Saved model id: {model_id} → models/model_repo.txt")
+    print(f"Saved model id: {model_id} → deployment/model_repo.txt")
 
     print("\n========== PIPELINE COMPLETED ==========")
 

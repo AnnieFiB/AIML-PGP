@@ -1,7 +1,7 @@
-fastapi
-uvicorn
+streamlit
 pandas
-joblib
-huggingface_hub
+numpy
 scikit-learn
 xgboost
+joblib
+huggingface-hub

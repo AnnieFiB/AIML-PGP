@@ -1,7 +1,6 @@
-streamlit
-pandas
-numpy
-scikit-learn
-xgboost
-joblib
-huggingface-hub
+joblib==1.5.3
+numpy==2.4.4
+pandas==2.3.3
+scikit-learn==1.7.2
+streamlit==1.57.0
+xgboost==3.2.0

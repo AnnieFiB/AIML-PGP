@@ -1,0 +1,240 @@
+
+name: Tourism Project MLOps Pipeline
+
+# =========================================================
+# TRIGGER
+# =========================================================
+# Run automatically whenever code is pushed to main.
+# workflow_dispatch also allows the pipeline to be run
+# manually from GitHub Actions.
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+
+jobs:
+
+  # =======================================================
+  # STAGE 1: REGISTER DATASET
+  # =======================================================
+
+  register-dataset:
+    name: Register Dataset
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Download repository code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+
+      # Configure Python
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+
+      # Install packages required for dataset registration
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas huggingface-hub
+
+
+      # Upload original tourism.csv to HF Dataset Hub
+      - name: Upload Dataset to Hugging Face
+        env:
+          HF_TOKEN_ML: ${{ secrets.HF_TOKEN_ML }}
+          HF_DATASET_REPO: ${{ secrets.HF_DATASET_REPO }}
+
+        run: |
+          python -c "
+          import os
+          from src.hf_utils import upload_to_hf
+
+          upload_to_hf(
+              local_path='data/tourism.csv',
+              repo_id=os.environ['HF_DATASET_REPO'],
+              repo_type='dataset',
+              token=os.environ['HF_TOKEN_ML']
+          )
+          "
+
+
+  # =======================================================
+  # STAGE 2: MODEL TRAINING
+  # =======================================================
+
+  model-training:
+    name: Model Training
+    needs: register-dataset
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Download repository code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+
+      # Configure Python
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+
+      # Install training dependencies
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+
+          pip install \
+            pandas \
+            numpy \
+            scikit-learn \
+            xgboost \
+            joblib \
+            huggingface-hub \
+            mlflow
+
+
+      # Start local MLflow tracking server
+      - name: Start MLflow Server
+        run: |
+          nohup mlflow server \
+            --host 127.0.0.1 \
+            --port 5000 \
+            > mlflow.log 2>&1 &
+
+          sleep 5
+
+
+      # ---------------------------------------------------
+      # train_model.py performs:
+      #
+      # 1. Load raw dataset from Hugging Face
+      # 2. Clean and prepare data
+      # 3. Stratified train/test split
+      # 4. Upload train/test data to HF Dataset Hub
+      # 5. Reload train/test data
+      # 6. Build preprocessing pipeline
+      # 7. Train and tune models
+      # 8. Track experiments using MLflow
+      # 9. Evaluate models
+      # 10. Select best model
+      # 11. Save and upload best model to HF Model Hub
+      # 12. Generate deployment metadata
+      # ---------------------------------------------------
+
+      - name: Run Model Training Pipeline
+        env:
+          HF_TOKEN_ML: ${{ secrets.HF_TOKEN_ML }}
+          HF_DATASET_REPO: ${{ secrets.HF_DATASET_REPO }}
+          HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}
+          MLFLOW_TRACKING_URI: http://127.0.0.1:5000
+
+        run: |
+          python -m src.train_model
+
+
+      # Check that deployment metadata was created
+      - name: Verify Model Metadata
+        run: |
+          echo "Selected model:"
+          cat deployment/model_output.txt
+
+          echo ""
+          echo "Model repository:"
+          cat deployment/model_repo.txt
+
+
+      # Each GitHub job uses a fresh machine.
+      # Store the generated metadata so the deployment
+      # stage can retrieve it.
+      - name: Upload Deployment Metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-metadata
+          path: |
+            deployment/model_output.txt
+            deployment/model_repo.txt
+          retention-days: 1
+
+
+  # =======================================================
+  # STAGE 3: DEPLOY AND HOST
+  # =======================================================
+
+  deploy-hosting:
+    name: Deploy to Hugging Face Space
+    needs: model-training
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Download repository code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+
+      # Configure Python
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+
+      # hosting.py only requires huggingface-hub
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install huggingface-hub
+
+
+      # Retrieve model_output.txt and model_repo.txt
+      # generated during model training
+      - name: Download Deployment Metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-metadata
+          path: deployment
+
+
+      # Confirm all files required by the Space are present
+      - name: Verify Deployment Package
+        run: |
+          echo "Deployment files:"
+          ls -la deployment
+
+          echo ""
+          echo "Selected model:"
+          cat deployment/model_output.txt
+
+          echo ""
+          echo "Model repository:"
+          cat deployment/model_repo.txt
+
+
+      # hosting.py uploads the deployment directory:
+      #
+      # Dockerfile
+      # requirements.txt
+      # streamlit_app.py
+      # model_output.txt
+      # model_repo.txt
+      #
+      # to the Hugging Face Space.
+      - name: Deploy to Hugging Face Space
+        env:
+          HF_TOKEN_ML: ${{ secrets.HF_TOKEN_ML }}
+          HF_SPACE_REPO: ${{ secrets.HF_SPACE_REPO }}
+
+        run: |
+          python hosting/hosting.py

@@ -16,17 +16,19 @@ jobs:
   # =======================================================
 
   register-dataset:
+
     name: Register Dataset
+
     runs-on: ubuntu-latest
 
     steps:
 
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
 
       - name: Set Up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: "pip"
@@ -63,18 +65,21 @@ jobs:
   # =======================================================
 
   model-training:
+
     name: Model Training
+
     needs: register-dataset
+
     runs-on: ubuntu-latest
 
     steps:
 
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
 
       - name: Set Up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: "pip"
@@ -108,84 +113,12 @@ jobs:
           python -m src.train_model
 
 
-      - name: Verify Model Metadata
+      - name: Verify Deployment Metadata
         run: |
           echo "Selected model:"
           cat deployment/model_output.txt
 
           echo ""
+
           echo "Model repository:"
           cat deployment/model_repo.txt
-
-
-      - name: Upload Deployment Metadata
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-metadata
-
-          path: |
-            deployment/model_output.txt
-            deployment/model_repo.txt
-
-          retention-days: 1
-
-
-  # =======================================================
-  # STAGE 3: DEPLOY TO GRADIO SPACE
-  # =======================================================
-
-  deploy-hosting:
-    name: Deploy to Hugging Face Gradio Space
-    needs: model-training
-    runs-on: ubuntu-latest
-
-    steps:
-
-      - name: Checkout Repository
-        uses: actions/checkout@v6
-
-
-      - name: Set Up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-          cache: "pip"
-
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-
-      # Retrieve the latest model metadata generated
-      # during the model-training job.
-      - name: Download Deployment Metadata
-        uses: actions/download-artifact@v4
-        with:
-          name: deployment-metadata
-          path: deployment
-
-
-      - name: Verify Deployment Package
-        run: |
-          echo "Deployment files:"
-          ls -la deployment
-
-          echo ""
-          echo "Selected model:"
-          cat deployment/model_output.txt
-
-          echo ""
-          echo "Model repository:"
-          cat deployment/model_repo.txt
-
-
-      - name: Deploy to Hugging Face Gradio Space
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN_ML }}
-          HF_TOKEN_ML: ${{ secrets.HF_TOKEN_ML }}
-          HF_SPACE_REPO: ${{ secrets.HF_SPACE_REPO }}
-
-        run: |
-          python hosting/hosting.py

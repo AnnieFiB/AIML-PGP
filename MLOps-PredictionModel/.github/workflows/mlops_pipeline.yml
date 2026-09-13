@@ -11,14 +11,13 @@ on:
 
 jobs:
 
-  # =======================================================
-  # STAGE 1: REGISTER DATASET
-  # =======================================================
+# =========================================================
+# STAGE 1 — DATASET REGISTRY
+# =========================================================
 
   register-dataset:
 
     name: Register Dataset
-
     runs-on: ubuntu-latest
 
     steps:
@@ -47,30 +46,36 @@ jobs:
           HF_DATASET_REPO: ${{ secrets.HF_DATASET_REPO }}
 
         run: |
-          python -c "
+          python - <<'PY'
+
           import os
+
           from src.hf_utils import upload_to_hf
 
+
           upload_to_hf(
-              local_path='data/tourism.csv',
-              repo_id=os.environ['HF_DATASET_REPO'],
-              repo_type='dataset',
-              token=os.environ['HF_TOKEN_ML']
+              local_path="data/tourism.csv",
+              repo_id=os.environ["HF_DATASET_REPO"],
+              repo_type="dataset",
+              token=os.environ["HF_TOKEN_ML"]
           )
-          "
+
+          PY
 
 
-  # =======================================================
-  # STAGE 2: MODEL TRAINING
-  # =======================================================
+# =========================================================
+# STAGE 2 — MODEL DEVELOPMENT
+# =========================================================
 
   model-training:
 
     name: Model Training
 
-    needs: register-dataset
+    needs:
+      - register-dataset
 
     runs-on: ubuntu-latest
+
 
     steps:
 
@@ -113,12 +118,121 @@ jobs:
           python -m src.train_model
 
 
-      - name: Verify Deployment Metadata
+      - name: Verify Selected Model
         run: |
-          echo "Selected model:"
+          echo "Model:"
           cat deployment/model_output.txt
 
           echo ""
 
-          echo "Model repository:"
+          echo "Repository:"
           cat deployment/model_repo.txt
+
+
+      - name: Upload Deployment Metadata
+        uses: actions/upload-artifact@v7
+        with:
+          name: deployment-metadata
+
+          path: |
+            deployment/model_output.txt
+            deployment/model_repo.txt
+
+
+# =========================================================
+# STAGE 3 — HUGGING FACE DEPLOYMENT
+# =========================================================
+
+  deploy-hf-space:
+
+    name: Deploy Hugging Face Space
+
+    needs:
+      - model-training
+
+    runs-on: ubuntu-latest
+
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+
+      - name: Set Up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+
+      - name: Install Hugging Face Hub
+        run: |
+          python -m pip install --upgrade pip
+          pip install huggingface_hub
+
+
+      # ---------------------------------------------------
+      # DOWNLOAD MODEL METADATA CREATED DURING TRAINING
+      # ---------------------------------------------------
+
+      - name: Download Deployment Metadata
+        uses: actions/download-artifact@v8
+        with:
+          name: deployment-metadata
+          path: deployment
+
+
+      # ---------------------------------------------------
+      # PREPARE HF SPACE
+      # ---------------------------------------------------
+
+      - name: Prepare Hugging Face Space
+        run: |
+
+          cp deployment/model_output.txt \
+             deployment/hf_space/model_output.txt
+
+          cp deployment/model_repo.txt \
+             deployment/hf_space/model_repo.txt
+
+
+          echo "Deployment files:"
+
+          ls -la deployment/hf_space
+
+
+      # ---------------------------------------------------
+      # DEPLOY
+      # ---------------------------------------------------
+
+      - name: Deploy Hugging Face Space
+        env:
+          HF_TOKEN_ML: ${{ secrets.HF_TOKEN_ML }}
+          HF_SPACE_REPO: ${{ secrets.HF_SPACE_REPO }}
+
+        run: |
+
+          python - <<'PY'
+
+          import os
+
+          from huggingface_hub import HfApi
+
+
+          api = HfApi(
+              token=os.environ["HF_TOKEN_ML"]
+          )
+
+
+          api.upload_folder(
+              folder_path="deployment/hf_space",
+              repo_id=os.environ["HF_SPACE_REPO"],
+              repo_type="space"
+          )
+
+
+          print(
+              "Hugging Face Space deployed successfully."
+          )
+
+          PY

@@ -16,5 +16,3 @@ NLP-GenerativeAI/models/mistral-7b-instruct-v0.2.Q6_K.gguf
 *.json
 *.xlsx
 *.ipynb_checkpoints
-*.ipynb
-

@@ -122,7 +122,7 @@ if page == "Prediction":
 
         with col1:
             Age = st.number_input(  "Age",min_value=18,  max_value=100, value=30)
-            Gender = st.selectbox("Gender", ["Male", "Female" , "Other"])
+            Gender = st.selectbox("Gender", ["Male", "Female"])
             MaritalStatus = st.selectbox( "Marital Status", [ "Married","Single","Divorced",  "Unmarried"  ] )
 
         with col2:

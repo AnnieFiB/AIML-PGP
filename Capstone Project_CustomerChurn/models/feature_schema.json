@@ -1,0 +1,80 @@
+{
+  "model_file": "churnguard_xgboost.joblib",
+  "features": [
+    "tenure",
+    "city_tier",
+    "cc_contacted_ly",
+    "payment",
+    "gender",
+    "service_score",
+    "account_user_count",
+    "account_segment",
+    "cc_agent_score",
+    "marital_status",
+    "rev_per_month",
+    "complain_ly",
+    "rev_growth_yoy",
+    "coupon_used_for_payment",
+    "day_since_cc_connect",
+    "cashback",
+    "login_device"
+  ],
+  "numeric": [
+    "tenure",
+    "city_tier",
+    "cc_contacted_ly",
+    "service_score",
+    "account_user_count",
+    "cc_agent_score",
+    "rev_per_month",
+    "complain_ly",
+    "rev_growth_yoy",
+    "coupon_used_for_payment",
+    "day_since_cc_connect",
+    "cashback"
+  ],
+  "defaults": {
+    "tenure": 9.0,
+    "city_tier": 1.0,
+    "cc_contacted_ly": 16.0,
+    "service_score": 3.0,
+    "account_user_count": 4.0,
+    "cc_agent_score": 3.0,
+    "rev_per_month": 5.0,
+    "complain_ly": 0.0,
+    "rev_growth_yoy": 15.0,
+    "coupon_used_for_payment": 1.0,
+    "day_since_cc_connect": 3.0,
+    "cashback": 165.17
+  },
+  "categories": {
+    "payment": [
+      "debit card",
+      "e wallet",
+      "credit card",
+      "cash on delivery",
+      "upi"
+    ],
+    "gender": [
+      "female",
+      "male"
+    ],
+    "account_segment": [
+      "super",
+      "regular plus",
+      "hni",
+      "regular",
+      "super plus"
+    ],
+    "marital_status": [
+      "single",
+      "married",
+      "divorced"
+    ],
+    "login_device": [
+      "mobile",
+      "computer",
+      "others"
+    ]
+  }
+}

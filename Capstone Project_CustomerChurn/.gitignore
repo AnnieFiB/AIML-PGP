@@ -9,7 +9,6 @@
 *.ckpt
 *.log
 *.tsv
-*.json
 *.xlsx
 *.ipynb_checkpoints
 *.DS_Store

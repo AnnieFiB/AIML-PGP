@@ -8,7 +8,6 @@
 *.hdf5
 *.ckpt
 *.log
-*.csv
 *.tsv
 *.json
 *.xlsx

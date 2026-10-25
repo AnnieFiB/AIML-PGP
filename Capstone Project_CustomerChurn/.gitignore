@@ -1,0 +1,16 @@
+*.npy
+*.pkl
+.env
+*.pdf
+*.npy
+*.zip
+*.h5
+*.hdf5
+*.ckpt
+*.log
+*.csv
+*.tsv
+*.json
+*.xlsx
+*.ipynb_checkpoints
+*.DS_Store

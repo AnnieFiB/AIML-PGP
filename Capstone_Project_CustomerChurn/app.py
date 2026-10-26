@@ -1,4 +1,5 @@
-import io,json,re
+import io,json,re,sqlite3,hashlib,smtplib,ssl
+from email.message import EmailMessage
 from pathlib import Path
 import joblib,pandas as pd,streamlit as st
 
@@ -51,6 +52,11 @@ def read_table(upload):
 def score(df):
     df=normalize(df)
     if df.empty: raise ValueError('No customer records found.')
+    # Account ID is required for reliable tracking and email deduplication
+    if 'accountid' not in df: raise ValueError('Missing accountid column. Every customer needs an Account ID.')
+    df['accountid']=df['accountid'].astype('string').str.strip()
+    if df['accountid'].isna().any() or df['accountid'].eq('').any(): raise ValueError('Account ID cannot be blank.')
+    if df['accountid'].duplicated().any(): raise ValueError('Duplicate account IDs found. Include one row per customer.')
     missing=[f for f in features if f not in df]
     if missing: raise ValueError('Missing model features: '+', '.join(missing))
     x=df[features].copy()
@@ -66,7 +72,7 @@ def score(df):
             if invalid: raise ValueError(f'{f} has unsupported values: {invalid}')
     probability=model.predict_proba(x)[:,1]
     risk=pd.cut(probability,[-.001,.30,.60,.80,1],labels=['Low','Moderate','High','Critical']).astype(str)
-    result=pd.DataFrame({'accountid':df['accountid'].to_numpy() if 'accountid' in df else ['N/A']*len(df)})
+    result=pd.DataFrame({'accountid':df['accountid'].to_numpy()})
     for f in ['account_segment','payment','tenure','marital_status','complain_ly','login_device']:
         if f in x: result[f]=x[f].to_numpy()
     result['Churn Probability']=probability
@@ -77,12 +83,68 @@ def score(df):
 
 # Show predictions with downloadable CSV and XLSX
 def show_results(result,name):
-    st.dataframe(result,hide_index=True,use_container_width=True)
+    st.dataframe(result,hide_index=True,width="stretch")
     csv_col,xlsx_col=st.columns(2)
     csv_col.download_button('Download CSV',result.to_csv(index=False).encode('utf-8-sig'),f'{name}.csv','text/csv')
     output=io.BytesIO()
     with pd.ExcelWriter(output,engine='openpyxl') as writer: result.to_excel(writer,index=False,sheet_name='Predictions')
     xlsx_col.download_button('Download Excel',output.getvalue(),f'{name}.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+# Email high-risk alerts; SQLite prevents duplicate messages across app reruns
+DB=ROOT/'churnguard_alerts.sqlite3'
+def send_alerts(result):
+    alerts=result[result['Risk Segment'].isin(['Critical','High'])].copy()
+    if alerts.empty: return 'No Critical or High-risk accounts to notify.'
+    try:
+        cfg=st.secrets['email']
+        host,port,user,password=cfg['host'],int(cfg.get('port',587)),cfg['username'],cfg['password']
+        sender=cfg.get('sender',user)
+        recipients=cfg['recipients']
+        recipients=[v.strip() for v in recipients.split(',')] if isinstance(recipients,str) else list(recipients)
+        if not recipients: raise ValueError('No email recipients configured.')
+    except Exception as e: raise ValueError('Configure [email] in .streamlit/secrets.toml (host, port, username, password, recipients).') from e
+    with sqlite3.connect(DB,timeout=15) as con:
+        con.execute('CREATE TABLE IF NOT EXISTS sent (account TEXT PRIMARY KEY, risk TEXT, sent_at TEXT DEFAULT CURRENT_TIMESTAMP)')
+        # Alert once per account and risk level; a change in level generates a new alert
+        pending=[]
+        for _,r in alerts.iterrows():
+            account=str(r['accountid']).strip()
+            if not account or account.lower() in ('n/a','nan','none'): continue
+            key=hashlib.sha256((account+'|'+str(r['Risk Segment'])).encode()).hexdigest()
+            if not con.execute('SELECT 1 FROM sent WHERE account=?',(key,)).fetchone(): pending.append((key,r))
+        if not pending: return 'No new alerts; previously notified accounts were skipped.'
+        lines=['ChurnGuard early warning — new high-risk accounts','','Account ID | Risk | Churn Probability | Recommended Action']
+        for _,r in pending:
+            lines.append(f"{r['accountid']} | {r['Risk Segment']} | {r['Churn Probability']:.1%} | {r['Recommended Action']}")
+        msg=EmailMessage()
+        msg['Subject']=f'ChurnGuard: {len(pending)} new high-risk account(s)'
+        msg['From']=sender
+        msg['To']=', '.join(recipients)
+        msg.set_content('\n'.join(lines))
+        if port==465:
+            with smtplib.SMTP_SSL(host,port,context=ssl.create_default_context(),timeout=30) as smtp:
+                smtp.login(user,password); smtp.send_message(msg)
+        else:
+            with smtplib.SMTP(host,port,timeout=30) as smtp:
+                smtp.starttls(context=ssl.create_default_context())
+                smtp.login(user,password); smtp.send_message(msg)
+        con.executemany('INSERT INTO sent(account,risk) VALUES (?,?)',[(key,str(r['Risk Segment'])) for key,r in pending])
+        con.commit()
+    return f'Email sent for {len(pending)} new Critical/High-risk account(s).'
+
+# Automatic email after scoring; suppress repeat attempts on Streamlit reruns
+# Persistent SQLite history prevents resending already notified account/risk pairs.
+def auto_alert(result,run_id):
+    if not result['Risk Segment'].isin(['Critical','High']).any(): return
+    if st.session_state.get('last_alert_run')==run_id: return
+    st.session_state['last_alert_run']=run_id
+    try:
+        message=send_alerts(result)
+        if message.startswith('Email sent'):
+            st.success('Email alerts: '+message)
+        else:
+            st.info(message)
+    except Exception as e: st.warning(f'Automatic email alert failed: {e}')
 
 # Sidebar navigation
 page=st.sidebar.radio('Navigation',['Single Prediction','Batch Prediction','Model Information'])
@@ -92,7 +154,7 @@ st.caption('Customer Churn Prediction and Retention Strategy')
 if page=='Single Prediction':
     st.subheader('Single Account Prediction')
     with st.form('single'):
-        accountid=st.text_input('Account ID')
+        accountid=st.text_input('Account ID',help='Required: unique identifier for the customer')
         values={}
         with st.expander('Numerical Features',expanded=True):
             cols=st.columns(3)
@@ -118,11 +180,12 @@ if page=='Single Prediction':
             b.metric('Risk Segment',result['Risk Segment'].iloc[0])
             st.info(result['Recommended Action'].iloc[0])
             show_results(result,'single_prediction')
+            auto_alert(result,'single:'+hashlib.sha256(json.dumps({'accountid':accountid,**values},sort_keys=True,default=str).encode()).hexdigest())
         except Exception as e: st.error(str(e))
 elif page=='Batch Prediction':
     st.subheader('Batch Account Prediction')
     upload=st.file_uploader('Upload customer CSV or XLSX',type=['csv','xlsx'])
-    st.caption('Include accountid and all required features: '+', '.join(features))
+    st.caption('Include a unique, nonblank accountid for each customer and all required features: '+', '.join(features))
     st.caption('Upload customer records, not a feature-importance report.')
     if upload:
         try:
@@ -133,6 +196,7 @@ elif page=='Batch Prediction':
             b.metric('Critical Risk',int(result['Risk Segment'].eq('Critical').sum()))
             c.metric('High Risk',int(result['Risk Segment'].eq('High').sum()))
             show_results(result,'batch_predictions')
+            auto_alert(result,'batch:'+hashlib.sha256(upload.getvalue()).hexdigest())
         except Exception as e: st.error(str(e))
 else:
     st.subheader('Model Information')

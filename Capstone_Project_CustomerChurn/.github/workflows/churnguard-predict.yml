@@ -1,14 +1,16 @@
-name: ChurnGuard - Predict changed datasets
+name: ChurnGuard - Automated Churn Prediction
+
 on:
   push:
     branches: [main]
     paths:
-      - 'data/**/*.csv'
-      - 'data/**/*.xlsx'
+      - 'data_to_predict/**/*.csv'
+      - 'data_to_predict/**/*.xlsx'
+      - '!data_to_predict/**/*_predictions.csv'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: churnguard-prediction
@@ -16,32 +18,69 @@ concurrency:
 
 jobs:
   score:
+    name: Automated Churn Prediction
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: pip
-      - name: Install model and scoring dependencies
-        run: pip install -r requirements.txt
-      - name: Score changed datasets
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Verify ChurnGuard files
+        run: |
+          test -f models/churnguard_xgboost.joblib
+          test -f models/feature_schema.json
+          test -f scripts/predict_changed.py
+
+      - name: Run automated churn predictions
         env:
           BEFORE_SHA: ${{ github.event.before }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             python scripts/predict_changed.py --all
           else
             python scripts/predict_changed.py
           fi
-      - name: Upload prediction outputs and summary
+
+      - name: Commit generated predictions
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          find data_to_predict -type f -name '*_predictions.csv' -print0 | xargs -0 -r git add --
+          if [ -f data_to_predict/run_summary.json ]; then
+            git add -- data_to_predict/run_summary.json
+          fi
+          if git diff --cached --quiet; then
+            echo "No prediction changes to commit."
+          else
+            git commit -m "ChurnGuard: Update prediction results"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Upload prediction artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: churnguard-predictions-${{ github.run_id }}
-          path: outputs/automation/
-          if-no-files-found: warn
+          path: |
+            data_to_predict/**/*_predictions.csv
+            data_to_predict/run_summary.json
+          if-no-files-found: ignore
           retention-days: 30

@@ -6,8 +6,8 @@ on:
     branches:
       - main
     paths:
-      - 'Capstone_Project_CustomerChurn/data/**/*.csv'
-      - 'Capstone_Project_CustomerChurn/data/**/*.xlsx'
+      - 'Capstone_Project_CustomerChurn/data_to_predict/**/*.csv'
+      - 'Capstone_Project_CustomerChurn/data_to_predict/**/*.xlsx'
 
   workflow_dispatch:
 
@@ -23,35 +23,30 @@ jobs:
     name: Automated Churn Prediction
     runs-on: ubuntu-latest
     timeout-minutes: 20
-
-    defaults:
-      run:
-        working-directory: Capstone_Project_CustomerChurn
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: pip
-          cache-dependency-path: Capstone_Project_CustomerChurn/requirements.txt
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m pip install -r requirements.txt
 
-      - name: Verify model files
+      - name: Verify ChurnGuard files
         run: |
           test -f models/churnguard_xgboost.joblib
           test -f models/feature_schema.json
           test -f scripts/predict_changed.py
-          echo "ChurnGuard model and script files verified."
 
       - name: Run automated churn predictions
         env:
@@ -64,11 +59,30 @@ jobs:
             python scripts/predict_changed.py
           fi
 
-      - name: Upload prediction results
+      - name: Commit generated predictions
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          find data_to_predict -type f -name '*_predictions.csv' -print0 | xargs -0 -r git add --
+          if [ -f data_to_predict/run_summary.json ]; then
+            git add -- data_to_predict/run_summary.json
+          fi
+          if git diff --cached --quiet; then
+            echo "No prediction changes to commit."
+          else
+            git commit -m "ChurnGuard: Update prediction results"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Upload prediction artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: churnguard-predictions-${{ github.run_id }}
-          path: Capstone_Project_CustomerChurn/outputs/automation/
-          if-no-files-found: warn
+          path: |
+            data_to_predict/**/*_predictions.csv
+            data_to_predict/run_summary.json
+          if-no-files-found: ignore
           retention-days: 30

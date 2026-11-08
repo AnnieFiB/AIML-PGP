@@ -1,0 +1,47 @@
+name: ChurnGuard - Predict changed datasets
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/**/*.csv'
+      - 'data/**/*.xlsx'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: churnguard-prediction
+  cancel-in-progress: false
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install model and scoring dependencies
+        run: pip install -r requirements.txt
+      - name: Score changed datasets
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python scripts/predict_changed.py --all
+          else
+            python scripts/predict_changed.py
+          fi
+      - name: Upload prediction outputs and summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: churnguard-predictions-${{ github.run_id }}
+          path: outputs/automation/
+          if-no-files-found: warn
+          retention-days: 30

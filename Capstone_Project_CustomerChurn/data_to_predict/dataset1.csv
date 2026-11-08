@@ -1,0 +1,32 @@
+ACCOUNTID,TENURE,CITY_TIER,CC_CONTACTED_LY,PAYMENT,GENDER,SERVICE_SCORE,ACCOUNT_USER_COUNT,ACCOUNT_SEGMENT,CC_AGENT_SCORE,MARITAL_STATUS,REV_PER_MONTH,COMPLAIN_LY,REV_GROWTH_YOY,COUPON_USED_FOR_PAYMENT,DAY_SINCE_CC_CONNECT,CASHBACK,LOGIN_DEVICE
+CG-0116,0,1,129,cash on delivery,female,0,1,hni,1,divorced,1,1,4,0,0,0,computer
+CG-0117,2,2,100,debit card,male,1,2,regular,4,married,38,1,5,1,1,173,mobile
+CG-0118,5,3,80,upi,female,1,3,regular plus,2,single,75,0,6,2,2,346,others
+CG-0119,9,1,60,credit card,male,2,4,super,5,married,112,0,7,3,3,519,computer
+CG-0120,15,2,48,e wallet,female,2,5,hni,3,single,9,1,8,4,4,692,mobile
+CG-0121,22,3,35,credit card,male,3,6,regular,1,divorced,46,1,9,5,5,865,computer
+CG-0122,30,1,25,e wallet,female,3,1,regular plus,4,single,83,0,10,6,6,1038,mobile
+CG-0123,38,2,15,cash on delivery,male,4,2,super,2,divorced,120,0,11,7,7,1211,others
+CG-0124,47,3,10,debit card,female,3,3,hni,5,married,17,1,12,8,8,1384,computer
+CG-0125,1,1,6,debit card,female,5,3,regular plus,3,divorced,5,0,15,1,10,165.17,computer
+CG-0126,55,1,8,upi,male,5,4,regular,3,divorced,54,1,13,9,9,1557,mobile
+CG-0127,1,2,6,debit card,female,5,5,regular plus,1,married,91,0,14,10,10,1730,computer
+CG-0128,1,2,6,debit card,female,5,5,regular plus,1,married,91,0,14,10,10,1730,computer
+CG-0129,83,1,12,credit card,female,2,1,hni,2,married,25,1,16,12,12,84,others
+CG-0130,95,2,20,e wallet,male,4,2,regular,5,single,62,1,17,13,13,257,computer
+CG-0131,99,3,40,cash on delivery,female,3,3,regular plus,3,divorced,99,0,18,14,14,430,mobile
+CG-0132,5,1,55,e wallet,male,1,4,super,1,single,136,0,19,15,15,603,computer
+CG-0133,27,2,70,cash on delivery,female,0,5,hni,4,divorced,33,1,20,16,16,776,mobile
+CG-0134,43,3,90,debit card,male,2,6,regular,2,married,70,1,21,0,17,949,others
+CG-0135,59,1,5,upi,female,5,1,regular plus,5,divorced,107,0,22,1,18,1122,computer
+CG-0136,76,2,18,credit card,male,4,2,super,3,married,4,0,23,2,19,1295,mobile
+CG-0137,4,3,115,upi,female,1,3,hni,1,single,41,1,24,3,20,1468,computer
+CG-0138,18,1,45,credit card,male,3,4,regular,4,married,78,1,25,4,21,1641,mobile
+CG-0139,50,2,28,e wallet,female,2,5,regular plus,2,single,115,0,26,5,22,1814,others
+CG-0140,1,2,6,debit card,female,5,5,regular plus,1,married,91,0,14,10,10,1730,computer
+CG-0141,10,1,42,Debit Card,Male,2,3,HNI,4,Divorced,3,1,12,5,9,,Computer
+CG-0142,0,1,17,Debit Card,Male,2,4,Regular Plus,4,Married,,0,13,1,0,130.94,Computer
+2000543,59,1,5,upi,female,5,1,regular plus,5,divorced,107,0,22,1,18,1122,computer
+8890054,38,2,15,cash on delivery,male,4,2,super,2,divorced,120,0,11,7,7,1211,others
+CG-0170,50,2,28,e wallet,female,2,5,regular plus,2,single,115,0,26,5,22,1814,others
+CG-0190,99,3,40,cash on delivery,female,3,3,regular plus,3,divorced,99,0,18,14,14,430,mobile
